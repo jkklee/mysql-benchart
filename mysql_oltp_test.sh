@@ -2,18 +2,26 @@
 #by ljk 20161003
  
 #通过sysbench测试mysql相关性能，并将关键数据存储于‘test.sysbenc_test’表中
- 
+
+#----------自定义部分----------
 #定义记录测试结果的mysql连接相关参数，本例我在测试机上记录测试结果
 m_user='test'
 m_passwd='test'
 m_port='3307'
 m_host='127.0.0.1'
+#测试结果存储于哪个库
+m_db='test'
+#测试结果存储于哪个表
+m_table='sysbench_test'
  
 #定义错误日志文件
 log=/tmp/mysql_oltp.log
 #定义测试线程
 threds_num='8 24 48 64 96 128 160 196 256'
- 
+#每种条件测试多少次，分析时取平均值
+times=3
+#----------自定义部分结束---------- 
+
 #测试函数
 sb_test() {
  
@@ -22,9 +30,9 @@ sb_test() {
     if [ "$3" == "read-only" ];then read_only='on';else read_only='off';fi    #根据脚本参数确定是否read-only
  
     #创建记录测试信息的表
-    echo -e "\n---------------\n创建测测试结果表test.sysbench_test\n---------------"
+    echo -e "\n---------------\n创建测测试结果表$m_db.$m_table\n---------------"
     mysql -u$m_user -p$m_passwd -P$m_port -h$m_host <<EOF
-        CREATE TABLE IF NOT EXISTS test.sysbench_test (
+        CREATE TABLE IF NOT EXISTS $m_db.$m_table (
         scenario varchar(30) NOT NULL DEFAULT '' COMMENT '测试场景',
         server_name varchar(15) NOT NULL COMMENT '被测DB name',
         test_type varchar(15) NOT NULL COMMENT 'read-only,read-write,insert等',
@@ -38,11 +46,14 @@ sb_test() {
         95_pct_time decimal(12,2) NOT NULL DEFAULT '0.00' COMMENT '单位毫秒'
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 EOF
-    if [ $? -ne 0 ];then exit -1;fi
- 
-    #开始测试,每种条件测3次,分析时取平均值
+    if [ $? -ne 0 ];then
+        echo "create table $m_db.$m_table failed"
+        exit -1
+    fi
+
+    #开始测试,每种条件测$times次,分析时取平均值
     echo -e "\n---------------\n场景:$2 模式:$3\n---------------"
-    for i in {1..3};do
+    for i in `seq $times`;do
          
         for sb_threds in $threds_num;do    #按照指定的sysbench线程测试
             printf "  %-10s %s\n" $sb_threds线程 第$i次运行...
@@ -60,7 +71,7 @@ EOF
  
             #本次测试结果写入数据库
             mysql -u$m_user -p$m_passwd -P$m_port -h$m_host <<EOF 2> $log
-                INSERT INTO test.sysbench_test (scenario,server_name,test_type,sb_threads,server_load,request_read,request_write,request_total,request_per_second,total_time,95_pct_time) 
+                INSERT INTO $m_db.$m_table (scenario,server_name,test_type,sb_threads,server_load,request_read,request_write,request_total,request_per_second,total_time,95_pct_time) 
                 VALUES ('$2','$4','$3','$sb_threds','$load',$result);
 EOF
      
@@ -90,7 +101,7 @@ sb_analyse() {
         convert(avg(request_per_second),decimal(12,2)) as request_per_second,
         convert(avg(total_time),decimal(12,2)) as total_time,
         convert(avg(95_pct_time),decimal(12,2)) as 95_pct_time
-        FROM test.sysbench_test group by scenario,server_name,test_type,sb_threads
+        FROM $m_db.$m_table group by scenario,server_name,test_type,sb_threads
 EOF
 }
  
@@ -121,7 +132,7 @@ sb_chart() {
          
         if [ $# -eq 0 ];then
             #对分析结果中所有场景进行画图
-            for scenario in `mysql -u$m_user -p$m_passwd -h$m_host -P$m_port -s -e "select distinct(scenario) from test.sysbench_test" 2>/dev/null`;do
+            for scenario in `mysql -u$m_user -p$m_passwd -h$m_host -P$m_port -s -e "select distinct(scenario) from $m_db.$m_table" 2>/dev/null`;do
                 sb_analyse | awk -v scenario=$scenario '$1 == scenario {print}' > /tmp/"$scenario.dat"
                 plot_cmd=${plot_cmd}"'/tmp/"$scenario.dat"' using $col_num:xtic(4) title '$scenario' with linespoints lw 2,"
             done
