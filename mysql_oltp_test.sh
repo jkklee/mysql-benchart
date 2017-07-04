@@ -75,8 +75,8 @@ EOF
                 echo -e "\nSysbench error! For more information see $log"
                 exit -1
             fi
-            result=$(cat $log | egrep  "read:|write:|read/write.*:|total:|total\ time:|approx\..*95.*:"|sed -r -e "s/[0-9]+ \(//g" -e "s/\ per sec\.\)//g" -e "s/m?s$//g"| awk  '{printf("%s 
-",$NF)}'|sed "s/\ /,/g" | sed "s/,$//g")
+            result=$(cat $log | egrep  "read:|write:|read/write.*:|total:|total\ time:|approx\..*95.*:" | sed -r -e "s/[0-9]+ \(//g" -e "s/\ per sec\.\)//g" -e "s/m?s$//g"| awk  '{printf("%s 
+",$NF)}' | sed "s/\ /,/g" | sed "s/,$//g")
  
             #测试完成后立刻记录系统一分钟负载值，可近似认为测试过程中proxy的负载抽样
             load=$(ssh -p22 $4 "uptime|awk -F: '{print \$NF}'|awk -F, '{print \$1}'" 2>/dev/null)
