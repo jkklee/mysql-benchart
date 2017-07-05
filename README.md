@@ -12,19 +12,88 @@
 
 下面来看下脚本使用说明及用例截图
 
-帮助信息：  
-![image](http://s1.51cto.com/wyfs02/M00/88/EC/wKioL1gA9_vBi8sVAAUi_ih9Afw578.png)
+**帮助信息：**
+```
+[ljk@demo ~]$ sh shells/mysql_oltp_test.sh -h
 
-进行测试：    
-![image](http://s4.51cto.com/wyfs02/M00/7C/CC/wKiom1bYAeOA1GxwAAKll2FSJjs327.png)
+Usage: shells/mysql_oltp_test.sh test (test_scenario test_type mysql_host mysql_port mysql_user mysql_password)
+       shells/mysql_oltp_test.sh analyse
+       shells/mysql_oltp_test.sh chart [scenario]...
 
-查看分析结果：    
-![image](http://s2.51cto.com/wyfs02/M00/88/EC/wKioL1gA_FWQYlLhAAxXSIWw6KQ525.png)
+----------
+测试: 子命令test
+      test_scenario: 自定义的测试场景名
+      test_type: read-only 或 read-write, 表示测试模式
+      其余4参数表示待测试MySQL连接相关信息,密码若包含特殊字符,将其置于单引号内
+----------
+分析: 子命令analyse
+      展示分析结果
+----------
+画图: 子命令chart
+      会在/tmp/下生成request_per_second.png total_time.png 95_pct_time.png 三张图
+      chart (对分析结果中的所有测试场景画图)
+      chart scenario ... (对指定的测试场景画图，场景名依据先前自定义的名称)
 
-对结果进行画图：    
-![image](http://s5.51cto.com/wyfs02/M00/88/F0/wKiom1gA-i_DtcQhAAB_1VY5wcQ438.png)
+```
 
-效果图展示：    
+**进行测试：**
+```
+[ljk@demo ~]$ sh shells/mysql_oltp_test.sh test localhost_read_only  read-only 127.0.0.1 3306 user 'passwd'
+
+---------------
+创建测测试结果表test.sysbench_test
+---------------
+
+---------------
+场景:localhost_read_only 模式:read-only
+---------------
+  8线程    第1次运行...
+  24线程   第1次运行...
+  48线程   第1次运行...
+  64线程   第1次运行...
+  96线程   第1次运行...
+  128线程  第1次运行...
+  160线程  第1次运行...
+  196线程  第1次运行...
+  256线程  第1次运行...
+```
+
+**查看分析结果：**
+```
+[ljk@demo ~]$ sh shells/mysql_oltp_test.sh analyse
+Warning: Using a password on the command line interface can be insecure.
+scenario        server_name     test_type       sb_threads      server_load     request_total   request_read    request_write   request_per_second      total_time      95_pct_time
+single-mysql-remote     192.168.1.3    read-only       8       1.48    280000  280000  0       14269.88        19.78   17.32
+single-mysql-remote     192.168.1.3    read-only       24      1.55    280016  280016  0       23933.22        11.81   111.12
+single-mysql-remote     192.168.1.3    read-only       48      1.83    280022  280022  0       26868.16        10.47   225.34
+single-mysql-remote     192.168.1.3    read-only       64      2.02    280016  280016  0       28269.55        9.95    231.25
+single-mysql-remote     192.168.1.3    read-only       96      1.88    280012  280012  0       29160.26        9.62    409.48
+single-mysql-remote     192.168.1.3    read-only       128     1.92    280016  280016  0       31032.74        9.04    443.33
+single-mysql-remote     192.168.1.3    read-only       160     1.90    280012  280012  0       30906.38        9.07    616.22
+single-mysql-remote     192.168.1.3    read-only       196     2.19    280022  280022  0       31525.47        8.89    647.59
+single-mysql-remote     192.168.1.3    read-only       256     2.35    280009  280009  0       31965.53        8.77    844.62
+single-mysql-remote     192.168.1.3    read-only       512     2.48    280012  280012  0       31291.09        9.15    1362.92
+proxysql-1.3.0e 192.168.1.4    read-only       8       0.96    280005  280005  0       10092.85        27.79   25.06
+proxysql-1.3.0e 192.168.1.4    read-only       24      1.00    280009  280009  0       19884.42        14.10   159.36
+proxysql-1.3.0e 192.168.1.4    read-only       48      1.30    280014  280014  0       23239.66        12.07   232.69
+proxysql-1.3.0e 192.168.1.4    read-only       64      1.28    280023  280023  0       25746.88        10.89   238.74
+proxysql-1.3.0e 192.168.1.4    read-only       96      1.25    280014  280014  0       28304.34        9.90    434.78
+proxysql-1.3.0e 192.168.1.4    read-only       128     1.52    280014  280014  0       27669.46        10.22   481.75
+proxysql-1.3.0e 192.168.1.4    read-only       160     1.68    280028  280028  0       30020.32        9.34    606.40
+proxysql-1.3.0e 192.168.1.4    read-only       196     1.69    280028  280028  0       30620.70        9.15    682.21
+proxysql-1.3.0e 192.168.1.4    read-only       256     1.76    280033  280033  0       31710.98        8.83    826.42
+proxysql-1.3.0e 192.168.1.4    read-only       512     1.65    280028  280028  0       32398.24        8.65    1289.20
+```
+
+**对结果进行画图：**
+```
+#对存在于表中的所有场景进行横向对比画图
+[ljk@demo ~]$ sh shells/mysql_oltp_test.sh chart
+对特定的场景进行（横向对比）画图
+[ljk@demo ~]$ sh shells/mysql_oltp_test.sh chart single-mysql-remote proxysql-use-ps
+```
+
+**效果图展示：**
 ![image](http://s2.51cto.com/wyfs02/M02/88/EC/wKioL1gA-33y64FqAAAfUIYcEh0352.png)
 
 接下来我们来了解一下sysbench-0.5对MySQL进行测试的方法及原理
@@ -83,7 +152,7 @@ function set_vars()
 
 **准备数据：**
 
-在被测的mysql上执行如下命令（以8线程并发创建16张50w数据的表）
+(**手动创建**)在被测的mysql上执行如下命令（以8线程并发创建16张50w数据的表）
 ```
 sysbench --test=/usr/share/doc/sysbench/tests/db/parallel_prepare.lua \
          --mysql-table-engine=innodb --oltp-table-size=500000 --mysql-user=user \
@@ -94,7 +163,7 @@ sysbench --test=/usr/share/doc/sysbench/tests/db/parallel_prepare.lua \
 ```
 sysbench --test=/usr/share/doc/sysbench/tests/db/oltp.lua --mysql-table-engine=innodb \
          --oltp-table-size=500000 --mysql-user=user --mysql-password='passwd' \
-         --mysql-port=3306 --mysql-host=192.168.1.33 --oltp-tables-count=16 prepare
+         --mysql-port=3306 --mysql-host=192.168.1.3 --oltp-tables-count=16 prepare
 ```
 
 **开始测试：**
@@ -106,5 +175,5 @@ sh mysql_oltp_test.sh test atlas-24-threads read-only 192.168.1.44 3306 user pas
 ```
 sysbench --test=/usr/share/doc/sysbench/tests/db/parallel_prepare.lua \
 --mysql-user=user --mysql-password='passwd' --mysql-port=3306 \
---mysql-host=192.168.1.22 --oltp-tables-count=16 --num-threads=8 cleanup
+--mysql-host=192.168.1.3 --oltp-tables-count=16 --num-threads=8 cleanup
 ```
