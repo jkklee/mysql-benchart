@@ -82,7 +82,7 @@ EOF
             load=$(ssh -p22 $4 "uptime|awk -F: '{print \$NF}'|awk -F, '{print \$1}'" 2>/dev/null)
  
             #本次测试结果写入数据库
-            mysql -u$m_user -p$m_passwd -P$m_port -h$m_host <<EOF 2> $log
+            mysql -u$m_user -p$m_passwd -P$m_port -h$m_host <<EOF
                 INSERT INTO $m_db.$m_table (scenario,server_name,test_type,sb_threads,server_load,request_read,
                                             request_write,request_total,request_per_second,total_time,95_pct_time) 
                 VALUES ('$2','$4','$3','$sb_threds','$load',$result);
@@ -101,7 +101,7 @@ EOF
  
 #结果分析函数
 sb_analyse() {
-     mysql -u$m_user -p$m_passwd -h$m_host -P$m_port <<EOF 2>$log
+     mysql -u$m_user -p$m_passwd -h$m_host -P$m_port <<EOF 2>&1|grep -v 'password on the command line'
         SELECT
         scenario, 
         server_name,
