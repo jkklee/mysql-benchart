@@ -93,7 +93,7 @@ proxysql-1.3.0e 192.168.1.4    read-only       512     1.65    280028  280028  0
 [ljk@demo ~]$ sh shells/mysql_oltp_test.sh chart single-mysql-remote proxysql-use-ps
 ```
 
-**效果图展示：**
+**效果图展示：**  
 ![image](http://s2.51cto.com/wyfs02/M02/88/EC/wKioL1gA-33y64FqAAAfUIYcEh0352.png)
 
 接下来我们来了解一下sysbench-0.5对MySQL进行测试的方法及原理
