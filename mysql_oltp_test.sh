@@ -40,7 +40,7 @@ sb_test() {
  
     #创建记录测试信息的表
     echo -e "\n---------------\n创建测测试结果表$m_db.$m_table\n---------------"
-    mysql -u$m_user -p$m_passwd -P$m_port -h$m_host <<EOF
+    return=$(mysql -u$m_user -p$m_passwd -P$m_port -h$m_host <<EOF 2>&1
         CREATE TABLE IF NOT EXISTS $m_db.$m_table (
         scenario varchar(30) NOT NULL DEFAULT '' COMMENT '测试场景',
         server_name varchar(15) NOT NULL COMMENT '被测DB name',
@@ -55,8 +55,10 @@ sb_test() {
         95_pct_time decimal(12,2) NOT NULL DEFAULT '0.00' COMMENT '单位毫秒'
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 EOF
+)
     if [ $? -ne 0 ];then
-        echo "create table $m_db.$m_table failed"
+        echo $return|sed 's/[Ww]arning:.*password on the command.*insecure\.//'
+        #echo "create table $m_db.$m_table failed"
         exit -1
     fi
 
@@ -75,22 +77,26 @@ EOF
                 echo -e "\nSysbench error! For more information see $log"
                 exit -1
             fi
-            result=$(cat $log | egrep  "read:|write:|read/write.*:|total:|total\ time:|approx\..*95.*:" | sed -r -e "s/[0-9]+ \(//g" -e "s/\ per sec\.\)//g" -e "s/m?s$//g"| awk  '{printf("%s 
-",$NF)}' | sed "s/\ /,/g" | sed "s/,$//g")
+            result=$(cat $log | egrep  "read:|write:|read/write.*:|total:|total\ time:|approx\..*95.*:" | sed -r -e "s/[0-9]+ \(//g" -e "s/\ per sec\.\)//g" -e "s/m?s$//g"| awk  '{printf("%s ",$NF)}' | sed "s/\ /,/g" | sed "s/,$//g")
  
             #测试完成后立刻记录系统一分钟负载值，可近似认为测试过程中proxy的负载抽样
             load=$(ssh -p22 $4 "uptime|awk -F: '{print \$NF}'|awk -F, '{print \$1}'" 2>/dev/null)
- 
+            if [ -s $load ];then
+                load=0.00
+            fi
             #本次测试结果写入数据库
-            mysql -u$m_user -p$m_passwd -P$m_port -h$m_host <<EOF
+            return=$(mysql -u$m_user -p$m_passwd -P$m_port -h$m_host <<EOF 2>&1
                 INSERT INTO $m_db.$m_table (scenario,server_name,test_type,sb_threads,server_load,request_read,
                                             request_write,request_total,request_per_second,total_time,95_pct_time) 
                 VALUES ('$2','$4','$3','$sb_threds','$load',$result);
 EOF
+)
      
             if [ $? -ne 0 ];then
                 echo -e "\n----------$sb_threds线程测试，第$i次插入数据库时失败----------"
-                echo "INSERT VALUES ('$2','$4','$3',$sb_threds,$load,$result)"
+                #错误输出中排除mysql安全提示
+                echo $return|sed 's/[Ww]arning:.*password on the command.*insecure\.//'
+                #echo "INSERT VALUES ('$2','$4','$3',$sb_threds,$load,$result)"
                 exit -2
             fi
             sleep 60    #让库歇一会，也让一分钟负载能够恢复到测试前的值
@@ -101,7 +107,8 @@ EOF
  
 #结果分析函数
 sb_analyse() {
-     mysql -u$m_user -p$m_passwd -h$m_host -P$m_port <<EOF 2>&1|grep -v 'password on the command line'
+    #2>&1|grep部分为避免安全提示,使用该技巧就无法获取SQL执行的返回码了
+    mysql -u$m_user -p$m_passwd -h$m_host -P$m_port <<EOF 2>&1|grep -v 'password on the command line'
         SELECT
         scenario, 
         server_name,
